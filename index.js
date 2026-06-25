@@ -133,6 +133,7 @@
   const state = {
     settings: null,
     colorPresets: [],
+    activeColorPresetId: '',
     layer: null,
     observers: [],
     active: [],
@@ -163,7 +164,7 @@
     dockHandle: null,
     dockPanel: null,
     dockList: null,
-    dockPresetSwitcher: null,
+    dockPresetPanel: null,
     dockCaptureActive: false,
     dockOpen: false,
     dockItems: [],
@@ -413,6 +414,12 @@
 
   function getActiveColorPresetId() {
     const current = getCurrentColors();
+    if (state.activeColorPresetId) {
+      const tracked = findColorPreset(state.activeColorPresetId);
+      if (tracked && colorsMatch(tracked.colors, current)) {
+        return tracked.id;
+      }
+    }
     const match = state.colorPresets.find((preset) => colorsMatch(preset.colors, current));
     return match ? match.id : '';
   }
@@ -436,6 +443,7 @@
     if (!preset || !state.settings) {
       return;
     }
+    state.activeColorPresetId = preset.id;
     COLOR_SETTING_KEYS.forEach((key) => {
       state.settings[key] = preset.colors[key];
     });
@@ -449,6 +457,9 @@
   function removeColorPreset(id) {
     const target = cleanText(id);
     state.colorPresets = state.colorPresets.filter((preset) => preset.id !== target);
+    if (state.activeColorPresetId === target) {
+      state.activeColorPresetId = '';
+    }
     saveColorPresets();
     refreshColorPresetViews();
   }
@@ -2045,6 +2056,7 @@
       state.dockRoot = null;
       state.dockHandle = null;
       state.dockPanel = null;
+      state.dockPresetPanel = null;
       state.dockList = null;
       return;
     }
@@ -2062,23 +2074,33 @@
       count.className = `${PLUGIN_ID}-dock-count`;
       handle.appendChild(count);
 
+      const stack = hostDocument.createElement('div');
+      stack.className = `${PLUGIN_ID}-dock-stack`;
+
+      const presetPanel = hostDocument.createElement('div');
+      presetPanel.className = `${PLUGIN_ID}-dock-panel ${PLUGIN_ID}-dock-preset-panel`;
+      presetPanel.addEventListener('click', (event) => {
+        const presetId = event.target?.closest?.('[data-preset-apply]')?.dataset?.presetApply;
+        if (presetId) {
+          event.stopPropagation();
+          applyColorPreset(presetId);
+        }
+      });
+
       const panel = hostDocument.createElement('div');
-      panel.className = `${PLUGIN_ID}-dock-panel`;
+      panel.className = `${PLUGIN_ID}-dock-panel ${PLUGIN_ID}-dock-items-panel`;
 
       const list = hostDocument.createElement('div');
       list.className = `${PLUGIN_ID}-dock-list`;
 
       panel.appendChild(list);
+      stack.appendChild(presetPanel);
+      stack.appendChild(panel);
       root.appendChild(handle);
-      root.appendChild(panel);
+      root.appendChild(stack);
       hostDocument.body.appendChild(root);
 
       root.addEventListener('click', (event) => {
-        const presetId = event.target?.closest?.('[data-preset-apply]')?.dataset?.presetApply;
-        if (presetId) {
-          applyColorPreset(presetId);
-          return;
-        }
         const action = event.target?.closest?.('[data-action]')?.dataset?.action;
         if (action === 'toggle') {
           if (Date.now() < state.dockSuppressToggleUntil) {
@@ -2102,6 +2124,7 @@
       state.dockRoot = root;
       state.dockHandle = handle;
       state.dockPanel = panel;
+      state.dockPresetPanel = presetPanel;
       state.dockList = list;
       bindDockHandleAdjust();
     }
@@ -3453,15 +3476,24 @@
         align-items: center;
       }
 
-      .${PLUGIN_ID}-dock-presets {
+      .${PLUGIN_ID}-dock-stack {
         display: flex;
         flex-direction: column;
-        gap: 5px;
-        max-width: 172px;
+        gap: 10px;
       }
 
-      .${PLUGIN_ID}-dock-presets.is-empty {
-        display: none;
+      .${PLUGIN_ID}-dock-preset-panel {
+        flex-direction: column !important;
+        gap: 6px;
+        max-width: 188px;
+      }
+
+      .${PLUGIN_ID}-dock-preset-panel.is-empty {
+        display: none !important;
+      }
+
+      #${EDGE_DOCK_ID}:not(.has-items) .${PLUGIN_ID}-dock-items-panel {
+        display: none !important;
       }
 
       .${PLUGIN_ID}-dock-presets-title {
@@ -5773,27 +5805,20 @@
   }
 
   function renderDockPresetSwitcher() {
-    const panel = state.dockPanel;
+    const panel = state.dockPresetPanel;
     if (!panel) {
       return;
     }
-    let switcher = state.dockPresetSwitcher;
-    if (!switcher || !panel.contains(switcher)) {
-      switcher = hostDocument.createElement('div');
-      switcher.className = `${PLUGIN_ID}-dock-presets`;
-      panel.insertBefore(switcher, panel.firstChild);
-      state.dockPresetSwitcher = switcher;
-    }
-    switcher.replaceChildren();
+    panel.replaceChildren();
     if (!state.colorPresets.length) {
-      switcher.classList.add('is-empty');
+      panel.classList.add('is-empty');
       return;
     }
-    switcher.classList.remove('is-empty');
+    panel.classList.remove('is-empty');
     const title = hostDocument.createElement('div');
     title.className = `${PLUGIN_ID}-dock-presets-title`;
     title.textContent = '颜色预设';
-    switcher.appendChild(title);
+    panel.appendChild(title);
     const activeId = getActiveColorPresetId();
     state.colorPresets.forEach((preset) => {
       const btn = hostDocument.createElement('button');
@@ -5809,7 +5834,7 @@
       label.textContent = preset.name;
       btn.appendChild(dot);
       btn.appendChild(label);
-      switcher.appendChild(btn);
+      panel.appendChild(btn);
     });
   }
 
