@@ -4929,7 +4929,7 @@
       rotationX: -10,
       filter: 'blur(9px) saturate(1.28) brightness(1.2)',
       backgroundPosition: '0% 50%, 50% 50%, 50% 50%, 50% 50%',
-      clipPath: `inset(0 6% 0 6% round ${radius})`,
+      clipPath: `inset(10% 0% 10% 0% round ${radius})`,
     });
     if (scan) {
       gsap.set(scan, { x: -130, autoAlpha: 0, scaleX: 0.62, skewX: -14 });
