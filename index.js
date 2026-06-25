@@ -4199,7 +4199,11 @@
         }
 
         .${PLUGIN_ID}-settings .${PLUGIN_ID}-slider-row input[type="range"] {
-          min-height: 34px;
+          display: none;
+        }
+
+        .${PLUGIN_ID}-settings .${PLUGIN_ID}-slider-row .${PLUGIN_ID}-number-stepper {
+          grid-column: 1 / -1;
         }
       }
 
