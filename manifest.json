@@ -1,0 +1,12 @@
+{
+  "display_name": "酒馆提示框美化 · 云更新壳 (Toast Theme Loader)",
+  "loading_order": 100,
+  "requires": [],
+  "optional": [],
+  "dependencies": [],
+  "js": "index.js",
+  "author": "zmer",
+  "version": "1.0.0",
+  "homePage": "",
+  "auto_update": true
+}
