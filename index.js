@@ -2939,50 +2939,61 @@
         margin: 0 0 0 2px;
       }
 
+      /* ===== 星轨折跃 / Hyperspace Warp ===== */
       .${PLUGIN_ID}-fx-starwarp {
         overflow: hidden;
-        border-color: color-mix(in srgb, var(--zut-accent, #77b7ff) 54%, transparent);
+        isolation: isolate;
+        border-color: color-mix(in srgb, var(--zut-accent, #77b7ff) 52%, transparent);
         background:
-          linear-gradient(128deg, rgba(255,255,255,.16), transparent 28%, color-mix(in srgb, var(--zut-accent, #77b7ff) 12%, transparent) 52%, transparent 76%),
-          radial-gradient(circle at 16% 24%, color-mix(in srgb, var(--zut-accent, #77b7ff) 30%, transparent), transparent 30%),
-          radial-gradient(circle at 92% 70%, color-mix(in srgb, var(--zut-success-accent, #6ee7a8) 18%, transparent), transparent 32%),
-          rgb(var(--zut-bg-rgb, 16 20 25) / 0.91);
-        background-size: 180% 180%, 100% 100%, 100% 100%, 100% 100%;
+          radial-gradient(140% 165% at 50% 50%, transparent 16%, rgb(var(--zut-bg-rgb, 16 20 25) / .55) 56%, rgb(var(--zut-bg-rgb, 16 20 25) / .97) 100%),
+          radial-gradient(circle at 50% 46%, color-mix(in srgb, var(--zut-accent, #77b7ff) 24%, transparent), transparent 40%),
+          rgb(var(--zut-bg-rgb, 16 20 25) / .95);
         box-shadow:
-          0 14px 36px rgba(0, 0, 0, .36),
-          0 0 24px color-mix(in srgb, var(--zut-accent, #77b7ff) 28%, transparent),
-          inset 0 1px 0 rgba(255,255,255,.18),
-          inset 0 -18px 30px rgba(0,0,0,.12);
+          0 16px 40px rgba(0, 0, 0, .42),
+          0 0 28px color-mix(in srgb, var(--zut-accent, #77b7ff) 26%, transparent),
+          inset 0 0 26px rgba(0, 0, 0, .5),
+          inset 0 1px 0 rgba(255, 255, 255, .14);
       }
 
-      .${PLUGIN_ID}-fx-starwarp::before,
+      /* 漂移星场：细密星点缓慢闪烁，营造纵深 */
+      .${PLUGIN_ID}-fx-starwarp::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        background-image:
+          radial-gradient(1.4px 1.4px at 18% 32%, #fff, transparent 60%),
+          radial-gradient(1.2px 1.2px at 73% 58%, color-mix(in srgb, var(--zut-accent, #77b7ff) 80%, #fff), transparent 60%),
+          radial-gradient(1px 1px at 42% 78%, #fff, transparent 60%),
+          radial-gradient(1.3px 1.3px at 88% 24%, color-mix(in srgb, var(--zut-success-accent, #6ee7a8) 70%, #fff), transparent 60%),
+          radial-gradient(1px 1px at 58% 12%, #fff, transparent 60%),
+          radial-gradient(1.1px 1.1px at 9% 62%, #fff, transparent 60%),
+          radial-gradient(1px 1px at 32% 50%, color-mix(in srgb, var(--zut-warning-accent, #ffd166) 70%, #fff), transparent 60%),
+          radial-gradient(1.2px 1.2px at 66% 88%, #fff, transparent 60%);
+        opacity: .5;
+        mix-blend-mode: screen;
+        animation: zut-warp-twinkle 3.6s ease-in-out infinite;
+      }
+
+      /* 折跃光轨：从灭点放射的光线向外冲刺，模拟跃迁瞬间 */
       .${PLUGIN_ID}-fx-starwarp::after {
         content: "";
         position: absolute;
-        inset: -40% -24%;
+        inset: -70%;
         pointer-events: none;
         z-index: 0;
-      }
-
-      .${PLUGIN_ID}-fx-starwarp::before {
         background:
-          linear-gradient(100deg, transparent 0 18%, rgba(255,255,255,.42) 28%, color-mix(in srgb, var(--zut-accent, #77b7ff) 42%, transparent) 40%, transparent 58%),
-          repeating-linear-gradient(118deg,
-            transparent 0 18px,
-            color-mix(in srgb, var(--zut-accent, #77b7ff) 18%, transparent) 19px 20px,
-            transparent 21px 38px);
-        opacity: .28;
-        filter: blur(.45px);
-        transform: translateX(-32%) skewX(-12deg);
-        animation: zut-starwarp-prism 3.2s ease-in-out infinite;
-      }
-
-      .${PLUGIN_ID}-fx-starwarp::after {
-        background:
-          radial-gradient(ellipse at 50% 50%, color-mix(in srgb, var(--zut-accent, #77b7ff) 18%, transparent), transparent 52%),
-          radial-gradient(circle at 28% 46%, rgba(255,255,255,.18), transparent 18%);
-        opacity: .42;
-        animation: zut-starwarp-bloom 2.8s ease-in-out infinite;
+          repeating-conic-gradient(from 0deg at 50% 50%,
+            transparent 0 4deg,
+            color-mix(in srgb, var(--zut-accent, #77b7ff) 55%, #fff) 4deg 4.5deg,
+            transparent 4.5deg 9deg);
+        -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 6%, #000 26%, transparent 64%);
+                mask-image: radial-gradient(circle at 50% 50%, transparent 6%, #000 26%, transparent 64%);
+        opacity: 0;
+        transform: scale(.42);
+        mix-blend-mode: screen;
+        animation: zut-warp-rush 2.6s cubic-bezier(.5, 0, .7, 1) infinite;
       }
 
       .${PLUGIN_ID}-fx-starwarp .${PLUGIN_ID}-scan {
@@ -3017,40 +3028,54 @@
 
       .${PLUGIN_ID}-loading-starwarp .${PLUGIN_ID}-loader {
         display: inline-block;
+        width: 18px;
+        height: 18px;
+        flex: 0 0 18px;
+        border-radius: 999px;
+        overflow: visible;
         background:
-          linear-gradient(90deg,
-            color-mix(in srgb, var(--zut-accent, #77b7ff) 30%, transparent),
-            color-mix(in srgb, var(--zut-accent, #77b7ff) 88%, white),
-            color-mix(in srgb, var(--zut-success-accent, #6ee7a8) 62%, white),
-            color-mix(in srgb, var(--zut-accent, #77b7ff) 30%, transparent));
-        background-size: 220% 100%;
-        border-radius: 999px;
+          conic-gradient(from 0deg,
+            transparent 0 16%,
+            color-mix(in srgb, var(--zut-accent, #77b7ff) 88%, #fff) 30%,
+            transparent 42% 66%,
+            color-mix(in srgb, var(--zut-success-accent, #6ee7a8) 72%, #fff) 80%,
+            transparent 94%);
         box-shadow:
-          0 0 14px color-mix(in srgb, var(--zut-accent, #77b7ff) 42%, transparent),
-          inset 0 0 7px rgba(255,255,255,.22);
-        animation: zut-starwarp-loader 1.75s ease-in-out infinite;
+          0 0 13px color-mix(in srgb, var(--zut-accent, #77b7ff) 60%, transparent),
+          inset 0 0 6px rgba(255, 255, 255, .28);
+        animation: zut-warp-core 1.4s linear infinite;
       }
 
+      /* 外圈：放射状光轨向外冲刺 */
       .${PLUGIN_ID}-loading-starwarp .${PLUGIN_ID}-loader span:nth-child(1) {
-        inset: -3px -7px;
+        inset: -4px;
         border-radius: 999px;
-        background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--zut-accent, #77b7ff) 28%, transparent), transparent);
-        opacity: .5;
-        animation: zut-starwarp-loader-glow 1.75s ease-in-out infinite;
+        background:
+          repeating-conic-gradient(from 0deg,
+            transparent 0 13deg,
+            color-mix(in srgb, var(--zut-accent, #77b7ff) 75%, #fff) 13deg 15deg,
+            transparent 15deg 30deg);
+        -webkit-mask-image: radial-gradient(circle, transparent 38%, #000 54%, transparent 82%);
+                mask-image: radial-gradient(circle, transparent 38%, #000 54%, transparent 82%);
+        opacity: .7;
+        mix-blend-mode: screen;
+        animation: zut-warp-core-rush 1.4s linear infinite;
       }
 
+      /* 暗核：挖空中心形成环 */
       .${PLUGIN_ID}-loading-starwarp .${PLUGIN_ID}-loader span:nth-child(2) {
-        inset: 5px 4px;
+        inset: 4px;
         border-radius: 999px;
-        background: rgb(var(--zut-bg-rgb, 16 20 25) / .52);
+        background: radial-gradient(circle at 50% 50%, rgb(var(--zut-bg-rgb, 16 20 25) / .96), rgb(var(--zut-bg-rgb, 16 20 25) / .72));
+        box-shadow: inset 0 0 4px rgba(0, 0, 0, .85);
       }
 
+      /* 亮核：中央脉动的星点 */
       .${PLUGIN_ID}-loading-starwarp .${PLUGIN_ID}-loader span:nth-child(3) {
-        inset: 3px 8px;
+        inset: 6px;
         border-radius: 999px;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,.78), transparent);
-        transform: translateX(-42%);
-        animation: zut-starwarp-loader-spark 1.75s cubic-bezier(.45, 0, .2, 1) infinite;
+        background: radial-gradient(circle at 50% 50%, #fff, color-mix(in srgb, var(--zut-accent, #77b7ff) 82%, #fff) 58%, transparent 100%);
+        animation: zut-warp-core-pulse 1.4s ease-in-out infinite;
       }
 
       @media (max-width: 520px) {
@@ -4315,33 +4340,38 @@
         50% { opacity: .72; transform: scale(1.16); }
       }
 
-      @keyframes zut-starwarp-prism {
-        0%, 100% { opacity: .18; transform: translateX(-34%) skewX(-12deg); }
-        45% { opacity: .42; transform: translateX(6%) skewX(-12deg); }
-        70% { opacity: .24; transform: translateX(20%) skewX(-12deg); }
+      @keyframes zut-warp-twinkle {
+        0%, 100% { opacity: .34; transform: scale(1); }
+        50% { opacity: .62; transform: scale(1.04); }
       }
 
-      @keyframes zut-starwarp-bloom {
-        0%, 100% { opacity: .28; transform: scale(.96); }
-        50% { opacity: .52; transform: scale(1.08); }
+      @keyframes zut-warp-rush {
+        0% { opacity: 0; transform: scale(.42) rotate(0deg); }
+        22% { opacity: .6; }
+        100% { opacity: 0; transform: scale(2.6) rotate(7deg); }
       }
 
-      @keyframes zut-starwarp-loader {
-        0%, 100% { background-position: 0% 50%; transform: scaleX(.88); opacity: .72; }
-        45% { background-position: 100% 50%; transform: scaleX(1.12); opacity: 1; }
-        70% { background-position: 60% 50%; transform: scaleX(.98); opacity: .86; }
+      @keyframes zut-warp-core {
+        to { transform: rotate(360deg); }
       }
 
-      @keyframes zut-starwarp-loader-glow {
-        0%, 100% { opacity: .26; transform: scaleX(.82); }
-        50% { opacity: .62; transform: scaleX(1.15); }
+      @keyframes zut-warp-core-rush {
+        0% { opacity: .2; transform: scale(.6) rotate(0deg); }
+        50% { opacity: .85; }
+        100% { opacity: 0; transform: scale(1.3) rotate(-26deg); }
       }
 
-      @keyframes zut-starwarp-loader-spark {
-        0% { opacity: 0; transform: translateX(-58%) scaleX(.5); }
-        28% { opacity: .9; }
-        72% { opacity: .7; }
-        100% { opacity: 0; transform: translateX(58%) scaleX(.7); }
+      @keyframes zut-warp-core-pulse {
+        0%, 100% {
+          transform: scale(.7);
+          opacity: .72;
+          box-shadow: 0 0 6px color-mix(in srgb, var(--zut-accent, #77b7ff) 60%, transparent);
+        }
+        50% {
+          transform: scale(1.05);
+          opacity: 1;
+          box-shadow: 0 0 13px color-mix(in srgb, var(--zut-accent, #77b7ff) 92%, #fff);
+        }
       }
     `;
     (hostDocument.head || hostDocument.documentElement).appendChild(style);
