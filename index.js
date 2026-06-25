@@ -3480,6 +3480,35 @@
         display: flex;
         flex-direction: column;
         gap: 10px;
+        align-items: flex-end;
+      }
+
+      #${EDGE_DOCK_ID}.${PLUGIN_ID}-edge-dock--left .${PLUGIN_ID}-dock-stack {
+        align-items: flex-start;
+      }
+
+      #${EDGE_DOCK_ID}.${PLUGIN_ID}-edge-dock--top .${PLUGIN_ID}-dock-stack,
+      #${EDGE_DOCK_ID}.${PLUGIN_ID}-edge-dock--bottom .${PLUGIN_ID}-dock-stack {
+        align-items: center;
+      }
+
+      .${PLUGIN_ID}-dock-preset-panel,
+      .${PLUGIN_ID}-dock-items-panel {
+        width: max-content;
+        max-width: 188px;
+      }
+
+      .${PLUGIN_ID}-dock-items-panel {
+        align-self: flex-end;
+      }
+
+      #${EDGE_DOCK_ID}.${PLUGIN_ID}-edge-dock--left .${PLUGIN_ID}-dock-items-panel {
+        align-self: flex-start;
+      }
+
+      #${EDGE_DOCK_ID}.${PLUGIN_ID}-edge-dock--top .${PLUGIN_ID}-dock-items-panel,
+      #${EDGE_DOCK_ID}.${PLUGIN_ID}-edge-dock--bottom .${PLUGIN_ID}-dock-items-panel {
+        align-self: center;
       }
 
       .${PLUGIN_ID}-dock-preset-panel {
