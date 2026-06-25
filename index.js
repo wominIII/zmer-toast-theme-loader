@@ -3492,6 +3492,11 @@
         display: none !important;
       }
 
+      .${PLUGIN_ID}-dock-items-panel {
+        padding: 5px;
+        gap: 5px;
+      }
+
       #${EDGE_DOCK_ID}:not(.has-items) .${PLUGIN_ID}-dock-items-panel {
         display: none !important;
       }
@@ -3546,7 +3551,7 @@
       .${PLUGIN_ID}-dock-actions,
       .${PLUGIN_ID}-dock-list {
         display: flex;
-        gap: 6px;
+        gap: 5px;
       }
 
       .${PLUGIN_ID}-dock-actions {
@@ -3562,10 +3567,10 @@
 
       .${PLUGIN_ID}-dock-tool,
       .${PLUGIN_ID}-dock-item {
-        width: 34px;
-        height: 34px;
+        width: 28px;
+        height: 28px;
         border: 1px solid rgba(255,255,255,.12);
-        border-radius: 10px;
+        border-radius: 9px;
         background: rgba(255,255,255,.06);
         color: var(--zut-text-color, #eef6ff);
         display: inline-flex;
