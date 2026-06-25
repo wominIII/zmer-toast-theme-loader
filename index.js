@@ -8,6 +8,7 @@
   const SEND_DOCK_ID = `${PLUGIN_ID}-send-dock-handle`;
   const SETTINGS_KEY = `${PLUGIN_ID}-settings-v1`;
   const EDGE_DOCK_KEY = `${PLUGIN_ID}-edge-dock-v1`;
+  const COLOR_PRESET_KEY = `${PLUGIN_ID}-color-presets-v1`;
   const EDGE_DOCK_ID = `${PLUGIN_ID}-edge-dock`;
   const EDGE_DOCK_CAPTURE_ID = `${PLUGIN_ID}-edge-dock-capture`;
   const ACU_PATCH_FLAG = `${PLUGIN_ID}-acu-patch`;
@@ -131,6 +132,7 @@
   const observedDocuments = Array.from(new Set([hostDocument, document].filter(Boolean)));
   const state = {
     settings: null,
+    colorPresets: [],
     layer: null,
     observers: [],
     active: [],
@@ -161,6 +163,7 @@
     dockHandle: null,
     dockPanel: null,
     dockList: null,
+    dockPresetSwitcher: null,
     dockCaptureActive: false,
     dockOpen: false,
     dockItems: [],
@@ -336,6 +339,123 @@
     } catch (_) {
       // Ignore storage errors; runtime state still applies.
     }
+  }
+
+  function getCurrentColors(settings = state.settings || DEFAULT_SETTINGS) {
+    const colors = {};
+    COLOR_SETTING_KEYS.forEach((key) => {
+      colors[key] = normalizeColor(settings[key], DEFAULT_SETTINGS[key]);
+    });
+    return colors;
+  }
+
+  function colorsMatch(a, b) {
+    if (!a || !b) {
+      return false;
+    }
+    for (const key of COLOR_SETTING_KEYS) {
+      const left = normalizeColor(a[key], DEFAULT_SETTINGS[key]).toLowerCase();
+      const right = normalizeColor(b[key], DEFAULT_SETTINGS[key]).toLowerCase();
+      if (left !== right) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function normalizeColorPresets(input = []) {
+    if (!Array.isArray(input)) {
+      return [];
+    }
+    return input
+      .map((item) => {
+        if (!item || typeof item !== 'object') {
+          return null;
+        }
+        const source = item.colors && typeof item.colors === 'object' ? item.colors : {};
+        const colors = {};
+        COLOR_SETTING_KEYS.forEach((key) => {
+          colors[key] = normalizeColor(source[key], DEFAULT_SETTINGS[key]);
+        });
+        const preset = {
+          id: cleanText(item.id || ''),
+          name: cleanText(item.name || '') || '未命名',
+          colors,
+        };
+        if (!preset.id) {
+          preset.id = `preset-${Math.abs(hashText(preset.name + JSON.stringify(colors) + Math.random())).toString(36)}`;
+        }
+        return preset;
+      })
+      .filter(Boolean);
+  }
+
+  function loadColorPresets() {
+    try {
+      return normalizeColorPresets(JSON.parse(hostWindow.localStorage?.getItem(COLOR_PRESET_KEY) || '[]'));
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function saveColorPresets() {
+    try {
+      hostWindow.localStorage?.setItem(COLOR_PRESET_KEY, JSON.stringify(normalizeColorPresets(state.colorPresets)));
+    } catch (_) {
+      // Ignore storage errors; runtime presets still apply.
+    }
+  }
+
+  function findColorPreset(id) {
+    const target = cleanText(id);
+    return state.colorPresets.find((preset) => preset.id === target) || null;
+  }
+
+  function getActiveColorPresetId() {
+    const current = getCurrentColors();
+    const match = state.colorPresets.find((preset) => colorsMatch(preset.colors, current));
+    return match ? match.id : '';
+  }
+
+  function addColorPreset(name) {
+    const presetName = cleanText(name) || `预设 ${state.colorPresets.length + 1}`;
+    const preset = {
+      id: `preset-${Math.abs(hashText(presetName + Date.now() + Math.random())).toString(36)}`,
+      name: presetName,
+      colors: getCurrentColors(),
+    };
+    state.colorPresets.push(preset);
+    state.colorPresets = normalizeColorPresets(state.colorPresets);
+    saveColorPresets();
+    refreshColorPresetViews();
+    return preset;
+  }
+
+  function applyColorPreset(id) {
+    const preset = findColorPreset(id);
+    if (!preset || !state.settings) {
+      return;
+    }
+    COLOR_SETTING_KEYS.forEach((key) => {
+      state.settings[key] = preset.colors[key];
+    });
+    state.settings = normalizeSettings(state.settings);
+    applySettings();
+    saveSettings();
+    syncSettingsPanel();
+    refreshColorPresetViews();
+  }
+
+  function removeColorPreset(id) {
+    const target = cleanText(id);
+    state.colorPresets = state.colorPresets.filter((preset) => preset.id !== target);
+    saveColorPresets();
+    refreshColorPresetViews();
+  }
+
+  function refreshColorPresetViews() {
+    renderColorPresetList(hostDocument.getElementById(PANEL_ID));
+    renderDockPresetSwitcher();
   }
 
   function cleanText(text) {
@@ -1954,6 +2074,11 @@
       hostDocument.body.appendChild(root);
 
       root.addEventListener('click', (event) => {
+        const presetId = event.target?.closest?.('[data-preset-apply]')?.dataset?.presetApply;
+        if (presetId) {
+          applyColorPreset(presetId);
+          return;
+        }
         const action = event.target?.closest?.('[data-action]')?.dataset?.action;
         if (action === 'toggle') {
           if (Date.now() < state.dockSuppressToggleUntil) {
@@ -1988,6 +2113,7 @@
     state.dockHandle.setAttribute('aria-label', `${state.dockOpen ? '收起' : '展开'}收纳栏，长按可调整位置`);
     state.dockHandle.querySelector(`.${PLUGIN_ID}-dock-count`).textContent = '';
 
+    renderDockPresetSwitcher();
     state.dockList.replaceChildren();
     state.dockItems.forEach((item) => {
       state.dockList.appendChild(renderDockSlot(item, state.dockElementMap.get(item.id) || null));
@@ -3327,6 +3453,64 @@
         align-items: center;
       }
 
+      .${PLUGIN_ID}-dock-presets {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        max-width: 172px;
+      }
+
+      .${PLUGIN_ID}-dock-presets.is-empty {
+        display: none;
+      }
+
+      .${PLUGIN_ID}-dock-presets-title {
+        font-size: 10px;
+        opacity: .6;
+        letter-spacing: .04em;
+        color: var(--zut-text-color, #eef6ff);
+      }
+
+      .${PLUGIN_ID}-dock-preset {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        max-width: 100%;
+        padding: 4px 9px;
+        border-radius: 9px;
+        border: 1px solid color-mix(in srgb, var(--zut-info-accent, #77b7ff) 22%, transparent);
+        background: rgb(var(--zut-bg-rgb, 16 20 25) / .55);
+        color: var(--zut-text-color, #eef6ff);
+        font-size: 11px;
+        line-height: 1.2;
+        cursor: pointer;
+        transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+      }
+
+      .${PLUGIN_ID}-dock-preset:hover {
+        border-color: color-mix(in srgb, var(--zut-info-accent, #77b7ff) 55%, transparent);
+        transform: translateY(-1px);
+      }
+
+      .${PLUGIN_ID}-dock-preset.is-active {
+        border-color: var(--zut-info-accent, #77b7ff);
+        background: color-mix(in srgb, var(--zut-info-accent, #77b7ff) 24%, rgb(var(--zut-bg-rgb, 16 20 25) / .6));
+      }
+
+      .${PLUGIN_ID}-dock-preset-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        box-shadow: 0 0 0 1px rgba(255,255,255,.25) inset;
+      }
+
+      .${PLUGIN_ID}-dock-preset-label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
       .${PLUGIN_ID}-dock-actions,
       .${PLUGIN_ID}-dock-list {
         display: flex;
@@ -3775,6 +3959,123 @@
         margin-top: 0.65rem;
         font-size: 12px;
         opacity: .78;
+      }
+
+      .${PLUGIN_ID}-settings .${PLUGIN_ID}-preset-block {
+        margin-top: 0.85rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid color-mix(in srgb, var(--zut-info-accent, #77b7ff) 20%, transparent);
+      }
+
+      .${PLUGIN_ID}-settings .${PLUGIN_ID}-preset-head {
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+      }
+
+      .${PLUGIN_ID}-settings .${PLUGIN_ID}-preset-save-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 0.6rem;
+        flex-wrap: wrap;
+      }
+
+      .${PLUGIN_ID}-settings .${PLUGIN_ID}-preset-name {
+        flex: 1 1 120px;
+        min-width: 120px;
+      }
+
+      .${PLUGIN_ID}-settings .${PLUGIN_ID}-preset-save-row .menu_button {
+        width: auto !important;
+        min-width: max-content;
+        white-space: nowrap !important;
+        writing-mode: horizontal-tb !important;
+      }
+
+      .${PLUGIN_ID}-settings .${PLUGIN_ID}-preset-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .${PLUGIN_ID}-settings .${PLUGIN_ID}-preset-empty {
+        font-size: 12px;
+        opacity: .6;
+      }
+
+      .${PLUGIN_ID}-settings .${PLUGIN_ID}-preset-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px;
+        border-radius: 10px;
+        border: 1px solid color-mix(in srgb, var(--zut-info-accent, #77b7ff) 16%, transparent);
+        background: rgb(var(--zut-bg-rgb, 16 20 25) / .35);
+      }
+
+      .${PLUGIN_ID}-settings .${PLUGIN_ID}-preset-item.is-active {
+        border-color: var(--zut-info-accent, #77b7ff);
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--zut-info-accent, #77b7ff) 45%, transparent) inset;
+      }
+
+      .${PLUGIN_ID}-settings .${PLUGIN_ID}-preset-apply {
+        flex: 1 1 auto;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 8px;
+        border: none;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--zut-text-color, #eef6ff);
+        cursor: pointer;
+        font-size: 12px;
+        text-align: left;
+        min-width: 0;
+      }
+
+      .${PLUGIN_ID}-settings .${PLUGIN_ID}-preset-apply:hover {
+        background: rgb(var(--zut-bg-rgb, 16 20 25) / .6);
+      }
+
+      .${PLUGIN_ID}-settings .${PLUGIN_ID}-preset-swatches {
+        display: inline-flex;
+        gap: 3px;
+        flex-shrink: 0;
+      }
+
+      .${PLUGIN_ID}-settings .${PLUGIN_ID}-preset-swatch {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        box-shadow: 0 0 0 1px rgba(255,255,255,.2) inset;
+      }
+
+      .${PLUGIN_ID}-settings .${PLUGIN_ID}-preset-label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .${PLUGIN_ID}-settings .${PLUGIN_ID}-preset-delete {
+        flex-shrink: 0;
+        width: 24px;
+        height: 24px;
+        border-radius: 7px;
+        border: none;
+        background: transparent;
+        color: var(--zut-text-color, #eef6ff);
+        opacity: .55;
+        font-size: 16px;
+        line-height: 1;
+        cursor: pointer;
+        transition: opacity 140ms ease, background 140ms ease;
+      }
+
+      .${PLUGIN_ID}-settings .${PLUGIN_ID}-preset-delete:hover {
+        opacity: 1;
+        background: color-mix(in srgb, var(--zut-error-accent, #ff6b7a) 30%, transparent);
       }
 
       .${PLUGIN_ID}-settings .${PLUGIN_ID}-settings-actions .menu_button {
@@ -5415,6 +5716,103 @@
     `;
   }
 
+  function renderColorPresetList(panel) {
+    if (!panel) {
+      return;
+    }
+    const list = panel.querySelector('[data-preset-list]');
+    if (!list) {
+      return;
+    }
+    list.replaceChildren();
+    if (!state.colorPresets.length) {
+      const empty = hostDocument.createElement('div');
+      empty.className = `${PLUGIN_ID}-preset-empty`;
+      empty.textContent = '还没有预设。调好颜色后点上面“保存当前颜色”。';
+      list.appendChild(empty);
+      return;
+    }
+    const activeId = getActiveColorPresetId();
+    state.colorPresets.forEach((preset) => {
+      const row = hostDocument.createElement('div');
+      row.className = `${PLUGIN_ID}-preset-item${preset.id === activeId ? ' is-active' : ''}`;
+
+      const apply = hostDocument.createElement('button');
+      apply.type = 'button';
+      apply.className = `${PLUGIN_ID}-preset-apply`;
+      apply.dataset.presetApply = preset.id;
+      apply.title = `应用预设：${preset.name}`;
+
+      const swatches = hostDocument.createElement('span');
+      swatches.className = `${PLUGIN_ID}-preset-swatches`;
+      ['infoColor', 'successColor', 'warningColor', 'errorColor', 'bgColor'].forEach((key) => {
+        const dot = hostDocument.createElement('span');
+        dot.className = `${PLUGIN_ID}-preset-swatch`;
+        dot.style.background = preset.colors[key];
+        swatches.appendChild(dot);
+      });
+
+      const label = hostDocument.createElement('span');
+      label.className = `${PLUGIN_ID}-preset-label`;
+      label.textContent = preset.name;
+
+      apply.appendChild(swatches);
+      apply.appendChild(label);
+
+      const del = hostDocument.createElement('button');
+      del.type = 'button';
+      del.className = `${PLUGIN_ID}-preset-delete`;
+      del.dataset.presetDelete = preset.id;
+      del.title = `删除预设：${preset.name}`;
+      del.textContent = '×';
+
+      row.appendChild(apply);
+      row.appendChild(del);
+      list.appendChild(row);
+    });
+  }
+
+  function renderDockPresetSwitcher() {
+    const panel = state.dockPanel;
+    if (!panel) {
+      return;
+    }
+    let switcher = state.dockPresetSwitcher;
+    if (!switcher || !panel.contains(switcher)) {
+      switcher = hostDocument.createElement('div');
+      switcher.className = `${PLUGIN_ID}-dock-presets`;
+      panel.insertBefore(switcher, panel.firstChild);
+      state.dockPresetSwitcher = switcher;
+    }
+    switcher.replaceChildren();
+    if (!state.colorPresets.length) {
+      switcher.classList.add('is-empty');
+      return;
+    }
+    switcher.classList.remove('is-empty');
+    const title = hostDocument.createElement('div');
+    title.className = `${PLUGIN_ID}-dock-presets-title`;
+    title.textContent = '颜色预设';
+    switcher.appendChild(title);
+    const activeId = getActiveColorPresetId();
+    state.colorPresets.forEach((preset) => {
+      const btn = hostDocument.createElement('button');
+      btn.type = 'button';
+      btn.className = `${PLUGIN_ID}-dock-preset${preset.id === activeId ? ' is-active' : ''}`;
+      btn.dataset.presetApply = preset.id;
+      btn.title = `切换到：${preset.name}`;
+      const dot = hostDocument.createElement('span');
+      dot.className = `${PLUGIN_ID}-dock-preset-dot`;
+      dot.style.background = preset.colors.infoColor;
+      const label = hostDocument.createElement('span');
+      label.className = `${PLUGIN_ID}-dock-preset-label`;
+      label.textContent = preset.name;
+      btn.appendChild(dot);
+      btn.appendChild(label);
+      switcher.appendChild(btn);
+    });
+  }
+
   function renderSettingsPanel(panel) {
     panel.innerHTML = `
       <div class="inline-drawer">
@@ -5484,6 +5882,14 @@
               </div>
             </label>
           </div>
+          <div class="${PLUGIN_ID}-preset-block">
+            <div class="${PLUGIN_ID}-preset-head">颜色预设</div>
+            <div class="${PLUGIN_ID}-preset-save-row">
+              <input class="text_pole ${PLUGIN_ID}-preset-name" type="text" data-preset-name maxlength="20" placeholder="预设名称（可留空）">
+              <button class="menu_button" type="button" data-action="preset-save">保存当前颜色</button>
+            </div>
+            <div class="${PLUGIN_ID}-preset-list" data-preset-list></div>
+          </div>
           <div class="${PLUGIN_ID}-settings-note" data-dock-summary></div>
           <div class="${PLUGIN_ID}-settings-actions">
             <button class="menu_button" type="button" data-action="test">测试</button>
@@ -5531,6 +5937,7 @@
         ? `${state.settings.edgeDockDropCapture ? '拖放收纳开启：可直接把图标拖到收纳条附近吸附。' : '拖放收纳关闭：不会再自动吸入新元素，已收纳按钮仍可往外拖开释放。'}长按收纳条可以微调上下或左右位置。当前已收纳 ${count} 个按钮。`
         : `开启边缘收纳后，可直接把图标拖到收纳条附近收纳。`;
     }
+    renderColorPresetList(panel);
   }
 
   function commitSettingChange(key, value, panel, options = {}) {
@@ -5660,6 +6067,37 @@
       hostWindow.setTimeout(() => closeChip(chip), 4200);
     });
 
+    panel.querySelector('[data-action="preset-save"]')?.addEventListener('click', () => {
+      const nameInput = panel.querySelector('[data-preset-name]');
+      addColorPreset(nameInput?.value || '');
+      if (nameInput) {
+        nameInput.value = '';
+      }
+    });
+
+    panel.querySelector('[data-preset-name]')?.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        const nameInput = panel.querySelector('[data-preset-name]');
+        addColorPreset(nameInput?.value || '');
+        if (nameInput) {
+          nameInput.value = '';
+        }
+      }
+    });
+
+    panel.querySelector('[data-preset-list]')?.addEventListener('click', (event) => {
+      const applyId = event.target?.closest?.('[data-preset-apply]')?.dataset?.presetApply;
+      if (applyId) {
+        applyColorPreset(applyId);
+        return;
+      }
+      const deleteId = event.target?.closest?.('[data-preset-delete]')?.dataset?.presetDelete;
+      if (deleteId) {
+        removeColorPreset(deleteId);
+      }
+    });
+
     syncSettingsPanel(panel);
   }
 
@@ -5748,6 +6186,7 @@
     state.startedAt = Date.now();
     state.settings = loadSettings();
     state.dockItems = loadDockItems();
+    state.colorPresets = loadColorPresets();
     injectStyle();
     ensureGsap();
     applySettings();
