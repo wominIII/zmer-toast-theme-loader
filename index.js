@@ -4911,6 +4911,18 @@
     }
   }
 
+  function splitIntoCharSpans(el) {
+    const t = el.textContent;
+    el.textContent = '';
+    return Array.from(t).map(ch => {
+      const s = hostDocument.createElement('span');
+      s.style.cssText = 'display:inline-block;white-space:pre';
+      s.textContent = ch;
+      el.appendChild(s);
+      return s;
+    });
+  }
+
   function animateChipEnterStarwarp(chip, gsap) {
     const scan = chip.querySelector(`.${PLUGIN_ID}-scan`);
     const ring = chip.querySelector(`.${PLUGIN_ID}-ring`);
@@ -4918,8 +4930,11 @@
     const text = chip.querySelector(`.${PLUGIN_ID}-text`);
     const action = chip.querySelector(`.${PLUGIN_ID}-action`);
     const loader = chip.querySelector(`.${PLUGIN_ID}-loader`);
+    const titleTextEl = title?.querySelector(`.${PLUGIN_ID}-title-text`);
+    const titleChars = titleTextEl ? splitIntoCharSpans(titleTextEl) : [];
+    const textChars = text ? splitIntoCharSpans(text) : [];
     const radius = hostWindow.getComputedStyle(chip).getPropertyValue('--zut-chip-radius').trim() || '7px';
-    const parts = [chip, scan, ring, title, text, action, loader].filter(Boolean);
+    const parts = [chip, scan, ring, title, text, action, loader, ...titleChars, ...textChars].filter(Boolean);
     gsap.killTweensOf(parts);
     gsap.set(chip, {
       xPercent: -50,
@@ -4941,11 +4956,11 @@
     if (ring) {
       gsap.set(ring, { scaleX: 0.86, scaleY: 0.72, autoAlpha: 0 });
     }
-    if (title) {
-      gsap.set(title, { y: -5, autoAlpha: 0, filter: 'blur(4px)' });
+    if (titleChars.length) {
+      gsap.set(titleChars, { x: 8, autoAlpha: 0, filter: 'blur(3px)' });
     }
-    if (text) {
-      gsap.set(text, { y: 7, autoAlpha: 0, filter: 'blur(5px)' });
+    if (textChars.length) {
+      gsap.set(textChars, { x: 10, autoAlpha: 0, filter: 'blur(4px)' });
     }
     if (action) {
       gsap.set(action, { x: 8, autoAlpha: 0, filter: 'blur(4px)' });
@@ -5025,23 +5040,25 @@
         ease: 'sine.out',
       }, 0.44);
     }
-    if (title) {
-      timeline.to(title, {
-        duration: 0.34,
-        y: 0,
+    if (titleChars.length) {
+      timeline.to(titleChars, {
+        duration: 0.26,
+        x: 0,
         autoAlpha: 1,
         filter: 'blur(0px)',
         ease: 'power3.out',
-      }, 0.22);
+        stagger: 0.034,
+      }, 0.20);
     }
-    if (text) {
-      timeline.to(text, {
-        duration: 0.40,
-        y: 0,
+    if (textChars.length) {
+      timeline.to(textChars, {
+        duration: 0.28,
+        x: 0,
         autoAlpha: 1,
         filter: 'blur(0px)',
         ease: 'power3.out',
-      }, 0.30);
+        stagger: 0.030,
+      }, 0.28);
     }
     if (action) {
       timeline.to(action, {
