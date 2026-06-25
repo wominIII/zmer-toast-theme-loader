@@ -1,5 +1,5 @@
 {
-  "display_name": "酒馆提示框美化 · 云更新壳 (Toast Theme Loader)",
+  "display_name": "酒馆提示框美化 (Toast Theme)",
   "loading_order": 100,
   "requires": [],
   "optional": [],
@@ -7,6 +7,6 @@
   "js": "index.js",
   "author": "zmer",
   "version": "1.0.0",
-  "homePage": "",
+  "homePage": "https://github.com/wominIII/zmer-toast-theme-loader",
   "auto_update": true
 }
